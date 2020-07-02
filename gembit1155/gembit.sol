@@ -75,7 +75,7 @@ contract gembit is ERC1155, ERC165 {
     */
     event URI(string _value, uint256 indexed _id);
 
-    function createCoin(string memory name) external {
+    function createCoin(string calldata name) external {
         require(msg.sender == minter, "You are not the minter!");
         coinNames[numCoins] = name;
         numCoins += 1;
