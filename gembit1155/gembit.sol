@@ -8,7 +8,9 @@ import "../interfaces/ierc1155receiver.sol";
 contract gembit is ERC1155, ERC165 {
     mapping (uint256 => mapping(address => uint256)) internal balances;
     mapping (address => mapping(address => bool)) internal operatorApproval;
-    address minter;
+    mapping (uint256 => string) internal coinNames;
+    address internal minter;
+    uint256 public numCoins;
 
     bytes4 constant private INTERFACE_SIGNATURE_ERC165 = 0x01ffc9a7;
 
@@ -73,8 +75,15 @@ contract gembit is ERC1155, ERC165 {
     */
     event URI(string _value, uint256 indexed _id);
 
+    function createCoin(string memory name) external {
+        require(msg.sender == minter, "You are not the minter!");
+        coinNames[numCoins] = name;
+        numCoins += 1;
+    }
+
     function mint(address _to, uint256 _id, uint256 _value) external {
         require(msg.sender == minter, "You are not the minter!");
+        require(numCoins>_id, "No coins of that type");
         require(_to != address(0), "Cannot mint to address 0!");
         balances[_id][_to] += _value;
         
