@@ -80,6 +80,26 @@ contract gembit is ERC1155, ERC165 {
         
         emit TransferSingle(msg.sender, address(0), _to, _id, _value);
     }
+    
+    function isContract(
+    address _addr
+  )
+    internal
+    view
+    returns (bool addressCheck)
+  {
+    // This method relies in extcodesize, which returns 0 for contracts in
+    // construction, since the code is only stored at the end of the
+    // constructor execution.
+
+    // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
+    // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
+    // for accounts without code, i.e. `keccak256('')`
+    bytes32 codehash;
+    bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+    assembly { codehash := extcodehash(_addr) } // solhint-disable-line
+    addressCheck = (codehash != 0x0 && codehash != accountHash);
+  }
 
     /**
         @notice Transfers `_value` amount of an `_id` from the `_from` address to the `_to` address specified (with safety call).
@@ -95,7 +115,7 @@ contract gembit is ERC1155, ERC165 {
         @param _value   Transfer amount
         @param _data    Additional data with no specified format, MUST be sent unaltered in call to `onERC1155Received` on `_to`
     */
-    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external override {
+    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external {
         require(msg.sender == _from || operatorApproval[_from][msg.sender], "Not authorized!");
         require(_to != address(0), "Cannot transfer to 0 address.");
         require(balances[_id][_from] >= _value, "Insufficient Fund.");
@@ -106,7 +126,7 @@ contract gembit is ERC1155, ERC165 {
 
         // Now that the balance is updated and the event was emitted,
         // call onERC1155Received if the destination is a contract.
-        if (_to.isContract()) {
+        if (isContract(_to)) {
             _doSafeTransferAcceptanceCheck(msg.sender, _from, _to, _id, _value, _data);
         }
     }
@@ -127,7 +147,7 @@ contract gembit is ERC1155, ERC165 {
         @param _values  Transfer amounts per token type (order and length must match _ids array)
         @param _data    Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
     */
-    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external override {
+    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external {
         require(msg.sender == _from || operatorApproval[_from][msg.sender], "Not authorized!");
         require(_to != address(0), "Cannot transfer to 0 address.");
         require(_ids.length == _values.length, "_ids and _values array length must match.");
@@ -143,7 +163,7 @@ contract gembit is ERC1155, ERC165 {
 
         // Now that the balances are updated and the events are emitted,
         // call onERC1155BatchReceived if the destination is a contract.
-        if (_to.isContract()) {
+        if (isContract(_to)) {
             _doSafeBatchTransferAcceptanceCheck(msg.sender, _from, _to, _ids, _values, _data);
         }
     }
@@ -154,7 +174,7 @@ contract gembit is ERC1155, ERC165 {
         @param _id     ID of the token
         @return        The _owner's balance of the token type requested
      */
-    function balanceOf(address _owner, uint256 _id) external view override returns (uint256) {
+    function balanceOf(address _owner, uint256 _id) external view returns (uint256) {
         return balances[_id][_owner];
     }
 
@@ -164,7 +184,7 @@ contract gembit is ERC1155, ERC165 {
         @param _ids    ID of the tokens
         @return        The _owner's balance of the token types requested (i.e. balance for each (owner, id) pair)
      */
-    function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids) external view override returns (uint256[] memory) {
+    function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids) external view returns (uint256[] memory) {
         require(_owners.length == _ids.length, "The given arrays did not match.");
 
         uint256[] memory balances_ = new uint256[](_owners.length);
@@ -182,7 +202,7 @@ contract gembit is ERC1155, ERC165 {
         @param _operator  Address to add to the set of authorized operators
         @param _approved  True if the operator is approved, false to revoke approval
     */
-    function setApprovalForAll(address _operator, bool _approved) external override {
+    function setApprovalForAll(address _operator, bool _approved) external {
         operatorApproval[msg.sender][_operator] = _approved;
         emit ApprovalForAll(msg.sender, _operator, _approved);
     }
@@ -193,7 +213,7 @@ contract gembit is ERC1155, ERC165 {
         @param _operator  Address of authorized operator
         @return           True if the operator is approved, false if not
     */
-    function isApprovedForAll(address _owner, address _operator) external view override returns (bool) {
+    function isApprovedForAll(address _owner, address _operator) external view returns (bool) {
         return operatorApproval[_owner][_operator];
     }
 
@@ -205,7 +225,7 @@ contract gembit is ERC1155, ERC165 {
 
         // Note: if the below reverts in the onERC1155Received function of the _to address you will have an undefined revert reason returned rather than the one in the require test.
         // If you want predictable revert reasons consider using low level _to.call() style instead so the revert does not bubble up and you can revert yourself on the ERC1155_ACCEPTED test.
-        require(ERC1155TokenReceiver(_to).onERC1155Received(_operator, _from, _id, _value, _data) == ERC1155_ACCEPTED, "contract returned an unknown value from onERC1155Received");
+        require(ERC1155TokenReceiver(_to).onERC1155Received(_operator, _from, _id, _value, _data) == 0xf23a6e61, "contract returned an unknown value from onERC1155Received");
     }
 
     function _doSafeBatchTransferAcceptanceCheck(address _operator, address _from, address _to, uint256[] memory _ids, uint256[] memory _values, bytes memory _data) internal {
@@ -215,6 +235,6 @@ contract gembit is ERC1155, ERC165 {
 
         // Note: if the below reverts in the onERC1155BatchReceived function of the _to address you will have an undefined revert reason returned rather than the one in the require test.
         // If you want predictable revert reasons consider using low level _to.call() style instead so the revert does not bubble up and you can revert yourself on the ERC1155_BATCH_ACCEPTED test.
-        require(ERC1155TokenReceiver(_to).onERC1155BatchReceived(_operator, _from, _ids, _values, _data) == ERC1155_BATCH_ACCEPTED, "contract returned an unknown value from onERC1155BatchReceived");
+        require(ERC1155TokenReceiver(_to).onERC1155BatchReceived(_operator, _from, _ids, _values, _data) == 0xbc197c81, "contract returned an unknown value from onERC1155BatchReceived");
     }
 }
