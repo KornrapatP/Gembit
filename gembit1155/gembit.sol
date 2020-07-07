@@ -106,6 +106,7 @@ contract gembit is ERC1155, ERC165 {
     // for accounts without code, i.e. `keccak256('')`
     bytes32 codehash;
     bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+    //
     assembly { codehash := extcodehash(_addr) } // solhint-disable-line
     addressCheck = (codehash != 0x0 && codehash != accountHash);
   }
@@ -130,7 +131,7 @@ contract gembit is ERC1155, ERC165 {
         require(balances[_id][_from] >= _value, "Insufficient Fund.");
         balances[_id][_from] -= _value;
         balances[_id][_to] += _value;
-        
+        // emit the transfer event
         emit TransferSingle(msg.sender, _from, _to, _id, _value);
 
         // Now that the balance is updated and the event was emitted,
