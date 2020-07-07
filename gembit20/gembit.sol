@@ -6,9 +6,20 @@ contract gemBit is ERC20 {
     uint256 _total;
     mapping(address=>uint256) _balance;
     mapping(address=>mapping(address=>uint256)) _allowance;
+    string _name;
+    string _sym;
 
-    constructor() public {
+    constructor(string name, string abr) public {
         _minter = msg.sender;
+        _name = name;
+        _sym = abr;
+    }
+    function name() public view returns (string) {
+        return _name;
+    }
+    
+    function symbol() public view returns (string) {
+        return _sym;
     }
 
     function mint(uint256 amount) external {
@@ -17,42 +28,48 @@ contract gemBit is ERC20 {
         _balance[_minter] += amount;
     }
 
-    function totalSupply() external view override returns (uint256) {
-        return _total
+    function totalSupply() external view returns (uint256) {
+        return _total;
     }
 
-    function balanceOf(address who) external view override returns (uint256) {
+    function balanceOf(address who) external view returns (uint256) {
         return _balance[who];
     }
 
-    function allowance(address owner, address spender) external view override returns (uint256) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         return _allowance[owner][spender];
     }
 
-    function transfer(address to, uint256 value) external override returns (bool) {
+    function transfer(address to, uint256 value) external returns (bool) {
         require(_balance[msg.sender] >= value, "Not enough funds!");
         _balance[msg.sender] -= value;
         _balance[to] += value;
-        emit Transfer(msg.sender, _to, _value);
+        emit Transfer(msg.sender, to, value);
         return true;
     }
 
-    function approve(address spender, uint256 value) external override returns (bool) {
+    function approve(address spender, uint256 value) external returns (bool) {
         _allowance[msg.sender][spender] = value;
-        emit Approval(msg.sender, _spender, _value);
+        emit Approval(msg.sender, spender, value);
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 value) external override returns (bool) {
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
         if (msg.sender == from) {
-            return transfer(to, value);
+            require(_balance[msg.sender] >= value, "Not enough funds!");
+            _balance[msg.sender] -= value;
+            _balance[to] += value;
+            emit Transfer(msg.sender, to, value);
+            return true;
         }
-        int256 allow = _allowance[from][msg.sender];
-        require(balances[from] >= value && allow >= value, "Not enough allowance");
-        allowed[from][msg.sender] -= value;
+        uint256 allow = _allowance[from][msg.sender];
+        require(_balance[from] >= value && allow >= value, "Not enough allowance");
+        _allowance[from][msg.sender] -= value;
         _balance[from] -= value;
         _balance[to] += value;
         emit Transfer(from, to, value);
         return true;
     }
+    
+    
 }
